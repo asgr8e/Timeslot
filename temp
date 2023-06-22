@@ -20,7 +20,8 @@ if not result:
     result = app.acquire_token_for_client(scopes=scope)
 
 # Set up Graph API request
-url = "https://graph.microsoft.com/v1.0/me/messages?$filter=startswith(subject,'<your_subject>')&$select=subject,hasAttachments,attachments"
+shared_mailbox_email = "<your_shared_mailbox_email>"
+url = f"https://graph.microsoft.com/v1.0/users/{shared_mailbox_email}/messages?$filter=startswith(subject,'<your_subject>')&$select=subject,hasAttachments,attachments"
 headers = {
     "Authorization": f"Bearer {result['access_token']}",
     "Content-Type": "application/json"
@@ -37,7 +38,7 @@ for message in response_json["value"]:
             if attachment["@odata.type"] == "#microsoft.graph.fileAttachment":
                 attachment_id = attachment["id"]
                 attachment_name = attachment["name"]
-                attachment_url = f"https://graph.microsoft.com/v1.0/me/messages/{message['id']}/attachments/{attachment_id}/$value"
+                attachment_url = f"https://graph.microsoft.com/v1.0/users/{shared_mailbox_email}/messages/{message['id']}/attachments/{attachment_id}/$value"
                 attachment_response = requests.get(attachment_url, headers=headers)
                 with open(attachment_name, "wb") as f:
                     f.write(base64.b64decode(attachment_response.content))
