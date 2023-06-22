@@ -1,0 +1,95 @@
+import msal
+import requests
+
+# Set the required variables
+tenant_id = '<your_tenant_id>'
+client_id = '<your_client_id>'
+client_secret = '<your_client_secret>'
+resource = 'https://graph.microsoft.com'
+
+# Create the ConfidentialClientApplication object
+app = msal.ConfidentialClientApplication(
+    client_id=client_id,
+    client_credential=client_secret,
+    authority=f'https://login.microsoftonline.com/{tenant_id}'
+)
+
+# Acquire the access token
+result = app.acquire_token_for_client(scopes=[f'{resource}/.default'])
+access_token = result['access_token']
+
+def read_emails_from_shared_mailbox(shared_mailbox_email, subject):
+    # Set the URL for the shared mailbox's messages
+    url = f'{resource}/v1.0/users/{shared_mailbox_email}/messages'
+
+    # Set the headers with the access token
+    headers = {
+        'Authorization': 'Bearer ' + access_token,
+        'Content-Type': 'application/json'
+    }
+
+    # Set the query parameters to filter by subject
+    params = {
+        '$filter': f'subject eq \'{subject}\''
+    }
+
+    # Send the request to retrieve the emails
+    response = requests.get(url, headers=headers, params=params)
+
+    # Check the response status
+    if response.status_code == 200:
+        emails = response.json()
+        return emails
+    else:
+        print('Error retrieving emails:', response.text)
+        return None
+
+def download_attachment(attachment_url):
+    # Set the headers with the access token
+    headers = {
+        'Authorization': 'Bearer ' + access_token
+    }
+
+    # Send the request to download the attachment
+    response = requests.get(attachment_url, headers=headers)
+
+    # Check the response status
+    if response.status_code == 200:
+        return response.content
+    else:
+        print('Error downloading attachment:', response.text)
+        return None
+
+# Specify the shared mailbox email address
+shared_mailbox_email = 'shared_mailbox@example.com'
+
+# Specify the subject of the email to search for
+email_subject = 'snow'
+
+# Call the function to read emails from the shared mailbox
+emails = read_emails_from_shared_mailbox(shared_mailbox_email, email_subject)
+
+# Process the retrieved emails as desired
+if emails:
+    for email in emails['value']:
+        print('Subject:', email['subject'])
+        print('Sender:', email['from']['emailAddress']['name'])
+
+        # Check if there are attachments
+        if 'attachments' in email:
+            for attachment in email['attachments']:
+                attachment_name = attachment['name']
+                attachment_url = attachment['@odata.mediaEditLink']
+                print('Attachment:', attachment_name)
+
+                # Download the attachment
+                attachment_data = download_attachment(attachment_url)
+
+                # Process the attachment data as desired
+                if attachment_data:
+                    # Save the attachment to a file
+                    with open(attachment_name, 'wb') as file:
+                        file.write(attachment_data)
+                    print('Attachment downloaded.')
+
+        print('---')
