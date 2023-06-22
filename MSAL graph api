@@ -1,0 +1,54 @@
+import msal
+import requests
+
+# Set the required variables
+tenant_id = '<your_tenant_id>'
+client_id = '<your_client_id>'
+client_secret = '<your_client_secret>'
+resource = 'https://graph.microsoft.com'
+
+# Create the ConfidentialClientApplication object
+app = msal.ConfidentialClientApplication(
+    client_id=client_id,
+    client_credential=client_secret,
+    authority=f'https://login.microsoftonline.com/{tenant_id}'
+)
+
+# Acquire the access token
+result = app.acquire_token_for_client(scopes=[f'{resource}/.default'])
+access_token = result['access_token']
+
+def read_emails_from_shared_mailbox(shared_mailbox_email):
+    # Set the URL for the shared mailbox's messages
+    url = f'{resource}/v1.0/users/{shared_mailbox_email}/messages'
+
+    # Set the headers with the access token
+    headers = {
+        'Authorization': 'Bearer ' + access_token,
+        'Content-Type': 'application/json'
+    }
+
+    # Send the request to retrieve the emails
+    response = requests.get(url, headers=headers)
+
+    # Check the response status
+    if response.status_code == 200:
+        emails = response.json()
+        return emails
+    else:
+        print('Error retrieving emails:', response.text)
+        return None
+
+# Specify the shared mailbox email address
+shared_mailbox_email = 'shared_mailbox@example.com'
+
+# Call the function to read emails from the shared mailbox
+emails = read_emails_from_shared_mailbox(shared_mailbox_email)
+
+# Process the retrieved emails as desired
+if emails:
+    for email in emails['value']:
+        print('Subject:', email['subject'])
+        print('Sender:', email['from']['emailAddress']['name'])
+        print('Body:', email['body']['content'])
+        print('---')
