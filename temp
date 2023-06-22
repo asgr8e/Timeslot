@@ -50,15 +50,24 @@ def download_attachment(attachment_url):
         'Authorization': 'Bearer ' + access_token
     }
 
-    # Send the request to download the attachment
+    # Send the request to retrieve the attachment download URL
     response = requests.get(attachment_url, headers=headers)
 
     # Check the response status
     if response.status_code == 200:
-        return response.content
+        attachment_data = response.json()
+        download_url = attachment_data['@microsoft.graph.downloadUrl']
+
+        # Download the attachment content
+        response = requests.get(download_url, headers=headers)
+        if response.status_code == 200:
+            return response.content
+        else:
+            print('Error downloading attachment content:', response.text)
     else:
-        print('Error downloading attachment:', response.text)
-        return None
+        print('Error retrieving attachment download URL:', response.text)
+
+    return None
 
 # Specify the shared mailbox email address
 shared_mailbox_email = 'shared_mailbox@example.com'
@@ -79,7 +88,7 @@ if emails:
         if 'attachments' in email:
             for attachment in email['attachments']:
                 attachment_name = attachment['name']
-                attachment_url = attachment['@odata.mediaEditLink']
+                attachment_url = attachment['@odata.readLink']
                 print('Attachment:', attachment_name)
 
                 # Download the attachment
